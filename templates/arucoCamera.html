@@ -18,7 +18,6 @@ video {
 </div>
 <div id="contentarea">
     <button id="startup" disabled="true" onclick="startup()">start</button>
-    <input type="checkbox" id="checkbox" disabled="true">processing</input>
     <button id="stop" disabled="true" onclick="stopCamera()">stop</button><br>
     <video id="video">Your browser does not support the video tag.</video>
     <canvas id="canvasOutput"></canvas>
@@ -36,66 +35,52 @@ let streaming = false;
 
 // Some HTML elements we need to configure.
 let video = null;
-let checkbox = null;
 let start = null;
 let stop = null;
 let stream = null;
 
 let loopIndex = 0;
 
+let cap = null;
 let inputImage = null;
 let markerImage = null;
 let dictionary = null;
 let parameter = null;
 let markerIds = null;
 let markerCorners = null;
-let rvecs  = null;
-let tvecs = null;
 let RgbImage = null;
-let cameraMatrix  = null;
-let distCoeffs = null;
 
 function get_aruco(){
     inputImage = new cv.Mat(height, width, cv.CV_8UC4);
     markerImage = new cv.Mat();
-    let dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
-
+    dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
 
     markerIds = new cv.Mat();
     markerCorners  = new cv.MatVector();
-    rvecs = new cv.Mat();
-    tvecs = new cv.Mat();
     RgbImage = new cv.Mat();
-    cameraMatrix = cv.matFromArray(3, 3, cv.CV_64F, [9.6635571716090658e+02, 0., 2.0679307818305685e+02, 0.,
-                                9.6635571716090658e+02, 2.9370020600555273e+02, 0., 0., 1.]);
-    let distCoeffs = cv.matFromArray(5, 1, cv.CV_64F, [-1.5007354215536557e-03, 9.8722389825801837e-01,
-                                    1.7188452542408809e-02, -2.6805958820424611e-02,-2.3313928379240205e+00]);
-    // "video" is the id of the video tag
-    let cap = new cv.VideoCapture("video");
+    cap = new cv.VideoCapture("video");
     loopIndex = setInterval(
-        function(){
-            cap.read(inputImage);
-            if (checkbox.checked) {
+        // function(){
+        //     cap.read(inputImage);
+        //     cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
+        //     cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
+        //     if (markerIds.rows > 0) {
+        //         cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
+        //     }
+        //     cv.imshow("canvasOutput", RgbImage);
+        // }
+        one_time_step
+        , 33);
+}
 
-                cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
-                cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
-
-                if (markerIds.rows > 0) {
-                    cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
-                    cv.estimatePoseSingleMarkers(markerCorners, 0.1, cameraMatrix, distCoeffs, rvecs, tvecs);
-                    for(let i=0; i < markerIds.rows; ++i) {
-                        let rvec = cv.matFromArray(3, 1, cv.CV_64F, [rvecs.doublePtr(0, i)[0], rvecs.doublePtr(0, i)[1], rvecs.doublePtr(0, i)[2]]);
-                        let tvec = cv.matFromArray(3, 1, cv.CV_64F, [tvecs.doublePtr(0, i)[0], tvecs.doublePtr(0, i)[1], tvecs.doublePtr(0, i)[2]]);
-                        cv.drawAxis(RgbImage, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
-                        rvec.delete();
-                        tvec.delete();
-                    }
-                }
-                cv.imshow("canvasOutput", RgbImage);
-            }
-            else
-                cv.imshow("canvasOutput", inputImage);
-        }, 33);
+function one_time_step(){
+    cap.read(inputImage);
+    cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
+    cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
+    if (markerIds.rows > 0) {
+        cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
+    }
+    cv.imshow("canvasOutput", RgbImage);
 }
 
 function initVideo(ev){
@@ -105,14 +90,12 @@ function initVideo(ev){
         video.setAttribute("height", height);
         streaming = true;
     }
-    checkbox.disabled = false;
     stop.disabled = false;
     playVideo();
 }
 
 function startup() {
     video = document.getElementById("video");
-    checkbox = document.getElementById("checkbox");
     start = document.getElementById("startup");
     stop = document.getElementById("stop");
 
