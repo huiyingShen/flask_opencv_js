@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<head>
+<style>
+canvas {
+    border: 1px solid black;
+}
+.err {
+    color: red;
+}
+</style>
+</head>
+<body>
+
+<button id="arucoTryIt" disabled="true" onclick="arucoExecuteCode()">Try it</button><br>
+
+<p class="err" id="arucoErr"></p>
+</div>
+<div id="arucoShowcase">
+    <div>
+        <canvas id="arucoCanvasInput"></canvas>
+        <canvas id="arucoCanvasOutput"></canvas>
+    </div>
+    <input type="file" id="arucoInput" name="file" />
+</div>
+<script src="{{ url_for('static', filename='utils.js') }}"></script>
+<script async src="{{ url_for('static', filename='opencv.js') }}" id="opencvjs"></script>
+
+<script>
+
+var markerIds,markerCorners;
+Window.ids = markerIds
+function arucoExecuteCode() {
+    //let arucoText = document.getElementById("arucoTestCode").value;
+    try {
+        let inputImage = cv.imread("arucoCanvasInput");
+        cv.cvtColor(inputImage, inputImage, cv.COLOR_RGBA2RGB, 0);
+        let markerImage = new cv.Mat();
+        let dictionary = new cv.aruco_Dictionary(cv.DICT_5X5_250);
+        markerIds = new cv.Mat();
+        markerCorners  = new cv.MatVector();
+        let rvecs = new cv.Mat();
+        let tvecs = new cv.Mat();
+        let cameraMatrix = cv.matFromArray(3, 3, cv.CV_64F, [1376.0, 0.0, 977.65,0.0, 1380.2, 510.53,0.0, 0.0, 1.0]);
+        let distCoeffs = cv.matFromArray(5, 1, cv.CV_64F, [0.11008736, -0.2437555 ,  0.0013639 , -0.00133615,  0.11958776]);
+
+        cv.detectMarkers(inputImage, dictionary, markerCorners, markerIds);
+        if (markerIds.rows > 0) {
+            cv.drawDetectedMarkers(inputImage, markerCorners, markerIds);
+            cv.estimatePoseSingleMarkers(markerCorners, 0.1, cameraMatrix, distCoeffs, rvecs, tvecs);
+            for(let i=0; i < markerIds.rows; ++i) {
+                let rvec = cv.matFromArray(3, 1, cv.CV_64F, [rvecs.doublePtr(0, i)[0], rvecs.doublePtr(0, i)[1], rvecs.doublePtr(0, i)[2]]);
+                let tvec = cv.matFromArray(3, 1, cv.CV_64F, [tvecs.doublePtr(0, i)[0], tvecs.doublePtr(0, i)[1], tvecs.doublePtr(0, i)[2]]);
+                cv.drawAxis(inputImage, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
+                rvec.delete();
+                tvec.delete();
+            }
+        } 
+
+        cv.imshow("arucoCanvasOutput", inputImage);
+        inputImage.delete(); markerImage.delete(); dictionary.delete(); markerIds.delete(); markerCorners.delete(); rvecs.delete(); tvecs.delete(); cameraMatrix.delete(); distCoeffs.delete();
+
+        document.getElementById("arucoErr").innerHTML = " ";
+    } catch(err) {
+        document.getElementById("arucoErr").innerHTML = err;
+    }
+}
+
+//loadImageToCanvas("./static/marker.jpg", "arucoCanvasInput");
+let arucoInputElement = document.getElementById("arucoInput");
+arucoInputElement.addEventListener("change", arucoHandleFiles, false);
+function arucoHandleFiles(e) {
+    let arucoUrl = URL.createObjectURL(e.target.files[0]);
+    loadImageToCanvas(arucoUrl, "arucoCanvasInput");
+}
+function onReady() {
+    document.getElementById("arucoTryIt").disabled = false;
+}
+if (typeof cv !== 'undefined') {
+    onReady();
+} else {
+    document.getElementById("opencvjs").onload = onReady;
+}
+</script>
+</body>
+

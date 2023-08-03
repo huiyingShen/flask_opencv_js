@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<head>
+<style>
+canvas {
+    border: 1px solid black;
+}
+.err {
+    color: red;
+}
+</style>
+</head>
+<body>
+
+<button id="arucoTryIt" disabled="true" onclick="arucoExecuteCode()">Try it</button><br>
+
+<p class="err" id="arucoErr"></p>
+</div>
+
+<script src="{{ url_for('static', filename='utils.js') }}"></script>
+<script async src="{{ url_for('static', filename='opencv.js') }}" id="opencvjs"></script>
+
+<script>
+
+var markerIds,markerCorners;
+Window.ids = markerIds
+function arucoExecuteCode() {
+    //let arucoText = document.getElementById("arucoTestCode").value;
+    try {
+        var objPnts = new cv.Mat(4, 1, cv.CV_32FC3);
+        var view = objPnts.data32F;
+        let xyz = [[0,0,0],[1,0,0],[1,1,0],[0,1,0]];
+        let square_size = 0.01;
+
+        for (var i = 0; i < 4; i++) 
+            for (var j=0; j<3; j++)
+                view[i*3 + j] = xyz[i][j] * square_size;
+   
+
+        var imgPnts = new cv.Mat(4, 1, cv.CV_32FC2);
+        var v2 = imgPnts.data32F
+        let val = [[195., 285.],[205., 192.],[300., 208.],[294., 298.]];
+        for (var i = 0; i < 4; i++) 
+            v2[i*2 + 0] = val[i][0], v2[i*2 + 1] = val[i][1];
+        
+
+        let rvec = new cv.Mat(), tvec = new cv.Mat();
+        let cameraMatrix = cv.matFromArray(3, 3, cv.CV_64F, [767.61, 0.0, 240.0, 0.0, 767.61, 320, 0.0, 0.0, 1.0]);
+        let distCoeffs = cv.matFromArray(5, 1, cv.CV_64F, [0.03576275, -0.90239679 ,  0.0, 0.0,  1.73823806]);
+        cv.solvePnP(objPnts,imgPnts,cameraMatrix,distCoeffs,rvec,tvec);
+
+        // project objPnts using computed rvec,tvec 
+        var imgPnts2 = new cv.Mat()
+        cv.projectPoints(objPnts, rvec, tvec, cameraMatrix,distCoeffs, imgPnts2);
+
+        let v3 = imgPnts2.data32F;
+        for (var i = 0; i < 4; i++) {
+            console.log(v3[i*2 + 0] , v3[i*2 + 1]);
+        }
+        // results: close enough to imgPnts
+        // 195.1251983642578 284.55767822265625
+        // 204.93080139160156 192.35581970214844
+        // 299.9587707519531 207.5708465576172
+        // 293.9801940917969 298.5153503417969
+
+        // test cv.Rodrigues
+        let rMat= new cv.Mat(), r2 = new cv.Mat()
+        cv.Rodrigues(rvec,rMat)
+        cv.Rodrigues(rMat,r2)
+        for (let i=0; i<3; i++)
+            console.log(rvec.data64F[i],r2.data64F[i])
+        // result:
+        // -0.09153705309809235 -0.09153705309809233
+        // -0.35870220884263043 -0.3587022088426305
+        // -1.4448458366023853 -1.4448458366023855
+        
+        rvec.delete(); tvec.delete(); cameraMatrix.delete(); distCoeffs.delete();
+
+        document.getElementById("arucoErr").innerHTML = " ";
+    } catch(err) {
+        document.getElementById("arucoErr").innerHTML = err;
+    }
+}
+
+
+function onReady() {
+    document.getElementById("arucoTryIt").disabled = false;
+}
+if (typeof cv !== 'undefined') {
+    onReady();
+} else {
+    document.getElementById("opencvjs").onload = onReady;
+}
+</script>
+</body>
+
