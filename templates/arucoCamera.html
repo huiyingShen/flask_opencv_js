@@ -17,8 +17,7 @@ video {
 <p class="err" id="vdErr"></p>
 </div>
 <div id="contentarea">
-    <button id="startup" disabled="true" onclick="startup()">start</button>
-    <button id="stop" disabled="true" onclick="stopCamera()">stop</button><br>
+    <button id="startup" disabled="true" onclick="startup()">start</button><br>
     <video id="video">Your browser does not support the video tag.</video>
     <canvas id="canvasOutput"></canvas>
 </div>
@@ -36,7 +35,6 @@ let streaming = false;
 // Some HTML elements we need to configure.
 let video = null;
 let start = null;
-let stop = null;
 let stream = null;
 
 let loopIndex = 0;
@@ -90,14 +88,12 @@ function initVideo(ev){
         video.setAttribute("height", height);
         streaming = true;
     }
-    stop.disabled = false;
     playVideo();
 }
 
 function startup() {
     video = document.getElementById("video");
     start = document.getElementById("startup");
-    stop = document.getElementById("stop");
 
     navigator.mediaDevices.getUserMedia({ video: {facingMode: "environment"}, audio: false })
         .then(function(s) {
@@ -124,60 +120,6 @@ function playVideo() {
         document.getElementById("vdErr").innerHTML = err;
     }
     start.disabled = true;
-}
-
-function stopCamera() {
-    clearInterval(loopIndex);
-    if (inputImage != null && !inputImage.isDeleted()) {
-        inputImage.delete();
-        inputImage = null;
-    }
-    if (markerImage != null && !markerImage.isDeleted()) {
-        markerImage.delete();
-        markerImage = null;
-    }
-    if (dictionary != null && !dictionary.isDeleted()) {
-        dictionary.delete();
-        dictionary = null;
-    }
-    if (parameter != null && !parameter.isDeleted()) {
-        parameter.delete();
-        parameter = null;
-    }
-    if (markerIds != null && !markerIds.isDeleted()) {
-        markerIds.delete();
-        markerIds = null;
-    }
-    if (markerCorners != null && !markerCorners.isDeleted()) {
-        markerCorners.delete();
-        markerCorners = null;
-    }
-    if (rvecs != null && !rvecs.isDeleted()) {
-        rvecs.delete();
-        rvecs = null;
-    }
-    if (tvecs != null && !tvecs.isDeleted()) {
-        tvecs.delete();
-        tvecs = null;
-    }
-    if (RgbImage != null && !RgbImage.isDeleted()) {
-        RgbImage.delete();
-        RgbImage = null;
-    }
-    if (cameraMatrix != null && !cameraMatrix.isDeleted()) {
-        cameraMatrix.delete();
-        cameraMatrix = null;
-    }
-    if (distCoeffs != null && !distCoeffs.isDeleted()) {
-        distCoeffs.delete();
-        distCoeffs = null;
-    }
-    document.getElementById("canvasOutput").getContext("2d").clearRect(0, 0, width, height);
-    video.pause();
-    video.srcObject = null;
-    stream.getVideoTracks()[0].stop();
-    start.disabled = false;
-    video.removeEventListener("canplay", initVideo);
 }
 
 function onReady() {
