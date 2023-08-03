@@ -14,51 +14,6 @@ video {
 </head>
 <body>
 
-<div id="CodeArea">
-<h3>Input your code</h3>
-<textarea rows="16" cols="70" id="TestCode" spellcheck="false">
-// inputImage are declared and deleted elsewhere
-inputImage = new cv.Mat(height, width, cv.CV_8UC4);
-markerImage = new cv.Mat();
-let dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
-
-
-markerIds = new cv.Mat();
-markerCorners  = new cv.MatVector();
-rvecs = new cv.Mat();
-tvecs = new cv.Mat();
-RgbImage = new cv.Mat();
-cameraMatrix = cv.matFromArray(3, 3, cv.CV_64F, [9.6635571716090658e+02, 0., 2.0679307818305685e+02, 0.,
-                               9.6635571716090658e+02, 2.9370020600555273e+02, 0., 0., 1.]);
-let distCoeffs = cv.matFromArray(5, 1, cv.CV_64F, [-1.5007354215536557e-03, 9.8722389825801837e-01,
-                                 1.7188452542408809e-02, -2.6805958820424611e-02,-2.3313928379240205e+00]);
-// "video" is the id of the video tag
-let cap = new cv.VideoCapture("video");
-loopIndex = setInterval(
-    function(){
-        cap.read(inputImage);
-        if (checkbox.checked) {
-
-            cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
-            cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
-
-            if (markerIds.rows > 0) {
-                cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
-                cv.estimatePoseSingleMarkers(markerCorners, 0.1, cameraMatrix, distCoeffs, rvecs, tvecs);
-                for(let i=0; i < markerIds.rows; ++i) {
-                    let rvec = cv.matFromArray(3, 1, cv.CV_64F, [rvecs.doublePtr(0, i)[0], rvecs.doublePtr(0, i)[1], rvecs.doublePtr(0, i)[2]]);
-                    let tvec = cv.matFromArray(3, 1, cv.CV_64F, [tvecs.doublePtr(0, i)[0], tvecs.doublePtr(0, i)[1], tvecs.doublePtr(0, i)[2]]);
-                    cv.drawAxis(RgbImage, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
-                    rvec.delete();
-                    tvec.delete();
-                }
-            }
-            cv.imshow("canvasOutput", RgbImage);
-        }
-        else
-            cv.imshow("canvasOutput", inputImage);
-    }, 33);
-</textarea>
 <p class="err" id="vdErr"></p>
 </div>
 <div id="contentarea">
@@ -100,17 +55,47 @@ let RgbImage = null;
 let cameraMatrix  = null;
 let distCoeffs = null;
 
-function read(a)
-{
-    alert(a);
-}
+function get_aruco(){
+    inputImage = new cv.Mat(height, width, cv.CV_8UC4);
+    markerImage = new cv.Mat();
+    let dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
 
-function load()
-{
-    let canvas = document.getElementById('canvasOutput');
-    let dataURL = canvas.toDataURL();
-    qrcode.callback = read;
-    qrcode.decode(dataURL);
+
+    markerIds = new cv.Mat();
+    markerCorners  = new cv.MatVector();
+    rvecs = new cv.Mat();
+    tvecs = new cv.Mat();
+    RgbImage = new cv.Mat();
+    cameraMatrix = cv.matFromArray(3, 3, cv.CV_64F, [9.6635571716090658e+02, 0., 2.0679307818305685e+02, 0.,
+                                9.6635571716090658e+02, 2.9370020600555273e+02, 0., 0., 1.]);
+    let distCoeffs = cv.matFromArray(5, 1, cv.CV_64F, [-1.5007354215536557e-03, 9.8722389825801837e-01,
+                                    1.7188452542408809e-02, -2.6805958820424611e-02,-2.3313928379240205e+00]);
+    // "video" is the id of the video tag
+    let cap = new cv.VideoCapture("video");
+    loopIndex = setInterval(
+        function(){
+            cap.read(inputImage);
+            if (checkbox.checked) {
+
+                cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
+                cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
+
+                if (markerIds.rows > 0) {
+                    cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
+                    cv.estimatePoseSingleMarkers(markerCorners, 0.1, cameraMatrix, distCoeffs, rvecs, tvecs);
+                    for(let i=0; i < markerIds.rows; ++i) {
+                        let rvec = cv.matFromArray(3, 1, cv.CV_64F, [rvecs.doublePtr(0, i)[0], rvecs.doublePtr(0, i)[1], rvecs.doublePtr(0, i)[2]]);
+                        let tvec = cv.matFromArray(3, 1, cv.CV_64F, [tvecs.doublePtr(0, i)[0], tvecs.doublePtr(0, i)[1], tvecs.doublePtr(0, i)[2]]);
+                        cv.drawAxis(RgbImage, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
+                        rvec.delete();
+                        tvec.delete();
+                    }
+                }
+                cv.imshow("canvasOutput", RgbImage);
+            }
+            else
+                cv.imshow("canvasOutput", inputImage);
+        }, 33);
 }
 
 function initVideo(ev){
@@ -149,9 +134,8 @@ function playVideo() {
         console.warn("Please startup your webcam");
         return;
     }
-    let text = document.getElementById("TestCode").value;
     try {
-        eval(text);
+        get_aruco();
         document.getElementById("vdErr").innerHTML = " ";
     } catch(err) {
         document.getElementById("vdErr").innerHTML = err;
