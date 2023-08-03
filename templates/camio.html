@@ -1,205 +1,43 @@
-
 <!DOCTYPE html>
-<html lang="en" >
-
 <head>
-  <meta charset="UTF-8">
-  
-
-    <link rel="apple-touch-icon" type="image/png" href="https://cpwebassets.codepen.io/assets/favicon/apple-touch-icon-5ae1a0698dcc2402e9712f7d01ed509a57814f994c660df9f7a952f3060705ee.png" />
-
-    <meta name="apple-mobile-web-app-title" content="CodePen">
-
-    <link rel="shortcut icon" type="image/x-icon" href="https://cpwebassets.codepen.io/assets/favicon/favicon-aec34940fbc1a6e787974dcd360f2c6b63348d4b1f4e06c77743096d55480f33.ico" />
-
-    <link rel="mask-icon" type="image/x-icon" href="https://cpwebassets.codepen.io/assets/favicon/logo-pin-b4b4269c16397ad2f0f7a01bcdf513a1994f4c94b8af2f191c09eb0d601762b1.svg" color="#111" />
-
-
-
-  
-    <script src="https://cpwebassets.codepen.io/assets/common/stopExecutionOnTimeout-2c7831bb44f98c1391d6a4ffda0e1fd302503391ca806e7fcc7b9b87197aec26.js"></script>
-
-
-  <title>CodePen - MediaPipe HandGestureRecognizer Task for web</title>
-
-    <link rel="canonical" href="https://codepen.io/mediapipe-preview/pen/zYamdVd">
-  
-  
-  
   
 <style>
-/* Copyright 2023 The MediaPipe Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-@use "@material";
-body {
-  font-family: roboto;
-  margin: 2em;
-  color: #3d3d3d;
-  --mdc-theme-primary: #007f8b;
-  --mdc-theme-on-primary: #f1f3f4;
+canvas {
+    border: 1px solid black;
 }
-
-h1 {
-  color: #007f8b;
-}
-
-h2 {
-  clear: both;
-}
-
 video {
-  clear: both;
-  display: block;
-  transform: rotateY(180deg);
-  -webkit-transform: rotateY(180deg);
-  -moz-transform: rotateY(180deg);
-  height: 280px;
+    border: 1px solid black;
 }
-
-section {
-  opacity: 1;
-  transition: opacity 500ms ease-in-out;
-}
-
-.removed {
-  display: none;
-}
-
-.invisible {
-  opacity: 0.2;
-}
-
-.detectOnClick {
-  position: relative;
-  float: left;
-  width: 48%;
-  margin: 2% 1%;
-  cursor: pointer;
-}
-.videoView {
-  position: absolute;
-  float: left;
-  width: 48%;
-  margin: 2% 1%;
-  cursor: pointer;
-  min-height: 500px;
-}
-
-.videoView p,
-.detectOnClick p {
-  padding-top: 5px;
-  padding-bottom: 5px;
-  background-color: #007f8b;
-  color: #fff;
-  border: 1px dashed rgba(255, 255, 255, 0.7);
-  z-index: 2;
-  margin: 0;
-}
-
-.highlighter {
-  background: rgba(0, 255, 0, 0.25);
-  border: 1px dashed #fff;
-  z-index: 1;
-  position: absolute;
-}
-
-.canvas {
-  z-index: 1;
-  position: absolute;
-  pointer-events: none;
-}
-
-.output_canvas {
-  transform: rotateY(180deg);
-  -webkit-transform: rotateY(180deg);
-  -moz-transform: rotateY(180deg);
-}
-
-.detectOnClick {
-  z-index: 0;
-  font-size: calc(8px + 1.2vw);
-}
-
-.detectOnClick img {
-  width: 45vw;
-}
-.output {
-  display: none;
-  width: 100%;
-  font-size: calc(8px + 1.2vw);
+.err {
+    color: red;
 }
 </style>
-
-  <script>
-  window.console = window.console || function(t) {};
-</script>
-
-  
-  
 </head>
-
-<body translate="no">
-  <!-- Copyright 2023 The MediaPipe Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-     http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. -->
+<body>
 <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
 <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<script id="rendered-js" type="module">
+  import { GestureRecognizer, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0";
+  window.GestureRecognizer = GestureRecognizer;
+  window.FilesetResolver = FilesetResolver;
+</script>
+
+
+<p class="err" id="vdErr"></p>
+</div>
+<div id="contentarea">
+    <button id="startup" disabled="true" onclick="startup()">start</button><br>
+    <video id="video">Your browser does not support the video tag.</video>
+    <canvas id="canvasOutput"></canvas>
+</div>
+
 <script async src="{{ url_for('static', filename='opencv.js') }}" id="opencvjs"></script>
 
+<script >
 
-
-<section id="demos" class="invisible">
-
-  <div id="liveView" class="videoView">
-    <button id="webcamButton" class="mdc-button mdc-button--raised">
-      <span class="mdc-button__ripple"></span>
-      <span class="mdc-button__label">ENABLE WEBCAM</span>
-    </button>
-    <div style="position: relative;">
-      <video id="webcam" autoplay playsinline></video>
-      <canvas class="output_canvas" id="output_canvas" width="1280" height="720" style="position: absolute; left: 0px; top: 0px;"></canvas>
-      <p id='gesture_output' class="output">
-    </div>
-  </div>
-</section>
-  
-      <script id="rendered-js" type="module">
-// Copyright 2023 The MediaPipe Authors.
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//      http://www.apache.org/licenses/LICENSE-2.0
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-import { GestureRecognizer, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0";
-const demosSection = document.getElementById("demos");
 let gestureRecognizer;
 let runningMode = "IMAGE";
 let enableWebcamButton;
@@ -222,89 +60,112 @@ const createGestureRecognizer = async () => {
 };
 createGestureRecognizer();
 
-/********************************************************************
-// Demo 2: Continuously grab image from webcam stream and detect it.
-********************************************************************/
-const video = document.getElementById("webcam");
-const canvasElement = document.getElementById("output_canvas");
-const canvasCtx = canvasElement.getContext("2d");
-const gestureOutput = document.getElementById("gesture_output");
-// Check if webcam access is supported.
-function hasGetUserMedia() {
-    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+// In this case, We set width 320, and the height will be computed based on the input stream.
+let width = 640;
+let height = 0;
+
+// whether streaming video from the camera.
+let streaming = false;
+
+// Some HTML elements we need to configure.
+let video = null;
+let start = null;
+let stream = null;
+
+let loopIndex = 0;
+
+let cap = null;
+let inputImage = null;
+let markerImage = null;
+let dictionary = null;
+let parameter = null;
+let markerIds = null;
+let markerCorners = null;
+let RgbImage = null;
+
+function get_aruco(){
+    inputImage = new cv.Mat(height, width, cv.CV_8UC4);
+    markerImage = new cv.Mat();
+    dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
+
+    markerIds = new cv.Mat();
+    markerCorners  = new cv.MatVector();
+    RgbImage = new cv.Mat();
+    cap = new cv.VideoCapture("video");
+    loopIndex = setInterval(
+        // function(){
+        //     cap.read(inputImage);
+        //     cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
+        //     cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
+        //     if (markerIds.rows > 0) {
+        //         cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
+        //     }
+        //     cv.imshow("canvasOutput", RgbImage);
+        // }
+        one_time_step
+        , 33);
 }
-// If webcam supported, add event listener to button for when user
-// wants to activate it.
-if (hasGetUserMedia()) {
-    enableWebcamButton = document.getElementById("webcamButton");
-    enableWebcamButton.addEventListener("click", enableCam);
+
+function one_time_step(){
+    cap.read(inputImage);
+    cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
+    cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
+    if (markerIds.rows > 0) {
+        cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
+    }
+    cv.imshow("canvasOutput", RgbImage);
 }
-else {
-    console.warn("getUserMedia() is not supported by your browser");
+
+function initVideo(ev){
+    if (!streaming) {
+        height = video.videoHeight / (video.videoWidth/width);
+        video.setAttribute("width", width);
+        video.setAttribute("height", height);
+        streaming = true;
+    }
+    playVideo();
 }
-// Enable the live webcam view and start detection.
-function enableCam(event) {
-    if (!gestureRecognizer) {
-        alert("Please wait for gestureRecognizer to load");
+
+function startup() {
+    video = document.getElementById("video");
+    start = document.getElementById("startup");
+
+    navigator.mediaDevices.getUserMedia({ video: {facingMode: "environment"}, audio: false })
+        .then(function(s) {
+            stream = s;
+            video.srcObject = stream;
+            video.play();
+        })
+        .catch(function(err) {
+            console.log("An error occured! " + err);
+    });
+
+    video.addEventListener("canplay", initVideo, false);
+}
+
+function playVideo() {
+    if (!streaming) {
+        console.warn("Please startup your webcam");
         return;
     }
-    if (webcamRunning === true) {
-        webcamRunning = false;
-        enableWebcamButton.innerText = "ENABLE PREDICTIONS";
+    try {
+        get_aruco();
+        document.getElementById("vdErr").innerHTML = " ";
+    } catch(err) {
+        document.getElementById("vdErr").innerHTML = err;
     }
-    else {
-        webcamRunning = true;
-        enableWebcamButton.innerText = "DISABLE PREDICTIONS";
-    }
-    // getUsermedia parameters.
-    const constraints = {
-        video: true
-    };
-    // Activate the webcam stream.
-    navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
-        video.srcObject = stream;
-        video.addEventListener("loadeddata", predictWebcam);
-    });
+    start.disabled = true;
 }
-let lastVideoTime = -1;
-let results = undefined;
-async function predictWebcam() {
-    const webcamElement = document.getElementById("webcam");
-    // Now let's start detecting the stream.
-    if (runningMode === "IMAGE") {
-        runningMode = "VIDEO";
-        await gestureRecognizer.setOptions({ runningMode: "VIDEO" });
-    }
-    let nowInMs = Date.now();
-    if (video.currentTime !== lastVideoTime) {
-        lastVideoTime = video.currentTime;
-        results = gestureRecognizer.recognizeForVideo(video, nowInMs);
-    }
-    canvasCtx.save();
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    canvasElement.style.height = videoHeight;
-    webcamElement.style.height = videoHeight;
-    canvasElement.style.width = videoWidth;
-    webcamElement.style.width = videoWidth;
-    if (results.landmarks) {
-        for (const landmarks of results.landmarks) {
-            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
-                color: "#00FF00",
-                lineWidth: 5
-            });
-            drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 2 });
-        }
-    }
-    canvasCtx.restore();
 
-    if (webcamRunning === true) {
-        window.requestAnimationFrame(predictWebcam);
-    }
+function onReady() {
+    document.getElementById("startup").disabled = false;
 }
-//# sourceURL=pen.js
-    </script>
+if (typeof cv !== 'undefined') {
+    onReady();
+} else {
+    document.getElementById("opencvjs").onload = onReady;
+}
+</script>
 
-  
+
 </body>
-
-</html>

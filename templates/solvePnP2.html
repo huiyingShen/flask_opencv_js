@@ -25,6 +25,7 @@ var markerIds,markerCorners;
 Window.ids = markerIds
 function arucoExecuteCode() {
     //let arucoText = document.getElementById("arucoTestCode").value;
+    console.log("solve pnp, ...")
     try {
         var objPnts = new cv.Mat(4, 1, cv.CV_32FC3);
         var view = objPnts.data32F;
