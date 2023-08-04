@@ -75,6 +75,11 @@ async function predictWebcam() {
                 lineWidth: 5
             });
             drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 2 });
+            canvasCtx.beginPath();
+            x = landmarks[8]["x"]*640;
+            y = landmarks[8]["y"]*480;
+            canvasCtx.ellipse(x, y, 10, 10, Math.PI / 4, 0, 2 * Math.PI);
+            canvasCtx.stroke();
         }
     }
     // canvasCtx.restore();
