@@ -26,8 +26,7 @@ video {
 <div id="contentarea">
     <button id="startup" disabled="true" onclick="startup()">start</button><br>
     <video id="video">Your browser does not support the video tag.</video>
-    <canvas id="canvasOutput0"></canvas>
-<   <canvas id="canvasOutput"></canvas>
+    <canvas id="canvasOutput"></canvas>
 </div>
 
 <script async src="{{ url_for('static', filename='opencv.js') }}" id="opencvjs"></script>
@@ -64,7 +63,7 @@ async function predictWebcam() {
         results = gestureRecognizer.recognizeForVideo(video1, nowInMs);
     }
     canvasCtx.save();
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    // canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     canvasElement.style.height = videoHeight;
     webcamElement.style.height = videoHeight;
     canvasElement.style.width = videoWidth;
@@ -128,7 +127,6 @@ function get_aruco(){
 }
 
 function one_time_step(){
-    predictWebcam();
 
     cap.read(inputImage);
     cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
@@ -136,8 +134,8 @@ function one_time_step(){
     if (markerIds.rows > 0) {
         cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
     }
-    cv.imshow("canvasOutput0", RgbImage);
-
+    cv.imshow("canvasOutput", RgbImage);
+    predictWebcam();
 }
 
 function initVideo(ev){
