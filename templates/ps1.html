@@ -13,13 +13,14 @@
         }
     </py-config>
     <py-script>
-      import matplotlib.pyplot as plt
-      import numpy as np
-      x = np.random.randn(1000)
-      y = np.random.randn(1000)
-      fig, ax = plt.subplots()
-      ax.scatter(x, y)
-      display(fig, target="plot")
+import matplotlib.pyplot as plt
+import numpy as np
+n = 100
+x = np.random.randn(n)
+y = np.random.randn(n)
+fig, ax = plt.subplots()
+ax.scatter(x, y)
+display(fig, target="plot")
     </py-script>
   </body>
 </html>
