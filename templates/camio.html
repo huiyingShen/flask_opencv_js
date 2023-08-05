@@ -32,14 +32,17 @@ video {
 <script async src="{{ url_for('static', filename='opencv.js') }}" id="opencvjs"></script>
 
 <script >
+let width = 640;
+let height = 480;
 
 let gestureRecognizer;
 let createGestureRecognizer;
 let runningMode = "IMAGE";
 let enableWebcamButton;
 let webcamRunning = false;
-const videoHeight = "480px";
-const videoWidth = "640px";
+
+const videoHeight = height.toString() + "px";
+const videoWidth = width.toString() + "px";
 // Before we can use HandLandmarker class we must wait for it to finish
 // loading. Machine Learning models can be large and take a moment to
 // get everything needed to run.
@@ -72,12 +75,12 @@ async function predictWebcam() {
         for (const landmarks of results.landmarks) {
             drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
                 color: "#00FF00",
-                lineWidth: 5
+                lineWidth: 3
             });
-            drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 2 });
+            drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 1 });
             canvasCtx.beginPath();
-            x = landmarks[8]["x"]*640;
-            y = landmarks[8]["y"]*480;
+            x = landmarks[8]["x"]*width;
+            y = landmarks[8]["y"]*height;
             canvasCtx.ellipse(x, y, 10, 10, Math.PI / 4, 0, 2 * Math.PI);
             canvasCtx.stroke();
         }
@@ -86,8 +89,7 @@ async function predictWebcam() {
 }
 
 // In this case, We set width 320, and the height will be computed based on the input stream.
-let width = 640;
-let height = 0;
+
 
 // whether streaming video from the camera.
 let streaming = false;

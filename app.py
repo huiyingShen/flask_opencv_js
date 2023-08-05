@@ -22,6 +22,10 @@ app = Flask(__name__, static_folder="static", template_folder='templates')
 def camio():
     return render_template('camio.html')
 
+@app.route("/ps1")
+def ps1():
+    return render_template('ps1.html')
+
 @app.route("/hands")
 def hands():
     return render_template('hands.html')
