@@ -5,7 +5,22 @@
     </head>
 
   <body>
-    <h1>Let's plot random numbers</h1>
+  <script>
+    name = "Guido" //A JS variable
+
+    // Define a JS Function
+    function addTwoNumbers(x, y){
+        return x + y;
+    }
+</script>
+<py-script>
+    # Import and use JS function and variable into Python
+    from js import name, addTwoNumbers
+
+    print(f"Hello {name}")
+    print("Adding 1 and 2 in Javascript: " + str(addTwoNumbers(1, 2)))
+</py-script>
+  
     <div id="plot"></div>
     <py-config type="json">
         {
@@ -13,14 +28,46 @@
         }
     </py-config>
     <py-script>
-import matplotlib.pyplot as plt
 import numpy as np
-n = 100
-x = np.random.randn(n)
-y = np.random.randn(n)
-fig, ax = plt.subplots()
-ax.scatter(x, y)
-display(fig, target="plot")
+
+
+def compute_homography(src_points, dst_points):
+    # Check that there are at least 4 corresponding points
+    assert src_points.shape[0] == dst_points.shape[0] and src_points.shape[0] >= 4
+    
+    A = []
+    for i in range(src_points.shape[0]):
+        x, y = src_points[i]
+        u, v = dst_points[i]
+        A.extend([
+            [-x, -y, -1, 0, 0, 0, u*x, u*y, u],
+            [0, 0, 0, -x, -y, -1, v*x, v*y, v]
+        ])
+    A = np.array(A)
+    
+    _, _, V = np.linalg.svd(A)
+    H = V[-1].reshape(3, 3)
+    return H
+
+def warp_func(H,x,y):
+    xy_homogeneous = np.array([x, y, 1])
+    uvw = np.dot(H, xy_homogeneous)
+    return [uvw[1] / uvw[2], uvw[0] / uvw[2]]
+
+# Define four corresponding points
+src_points = np.array([[10, 10], [10, 50], [50, 50], [50, 10]])
+dst_points = np.array([[20, 20], [10, 60], [50, 60], [60, 20]])
+
+# Compute the homography matrix
+H = compute_homography(src_points, dst_points)
+#verify result
+for xy in src_points:
+    print(warp_func(H,xy[0],xy[1]))
+
+
+
+# Note: You might use matplotlib or other libraries to visualize the result
+
     </py-script>
   </body>
 </html>
