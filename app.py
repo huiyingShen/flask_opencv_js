@@ -26,6 +26,14 @@ def camio():
 def ps1():
     return render_template('ps1.html')
 
+@app.route("/ps2")
+def ps2():
+    return render_template('ps2.html')
+
+@app.route("/click")
+def click():
+    return render_template('click.html')
+
 @app.route("/tts")
 def tts():
     return render_template('tts.html')
