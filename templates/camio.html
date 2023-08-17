@@ -128,6 +128,20 @@ let markerCorners = null;
 let RgbImage = null;
 
 function get_aruco(){
+    markerImage = new cv.Mat();
+    dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
+
+    markerIds = new cv.Mat();
+    markerCorners  = new cv.MatVector();
+    RgbImage = new cv.Mat();
+    cap = new cv.VideoCapture("video");
+
+    let img = cv.imread("map_canvas");
+    detect_show_aruco(img,"map_canvas")
+    map_ctx.save();
+    img.delete();
+
+    inputImage = new cv.Mat(height, width, cv.CV_8UC4);
 
     loopIndex = setInterval(one_time_step,100);
 }
@@ -220,19 +234,7 @@ function playVideo() {
     }
     try {
 
-        markerImage = new cv.Mat();
-        dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
 
-        markerIds = new cv.Mat();
-        markerCorners  = new cv.MatVector();
-        RgbImage = new cv.Mat();
-        cap = new cv.VideoCapture("video");
-
-        let img = cv.imread("map_canvas");
-        detect_show_aruco(img,"map_canvas")
-        img.delete();
-
-        inputImage = new cv.Mat(height, width, cv.CV_8UC4);
 
         get_aruco();
         document.getElementById("vdErr").innerHTML = " ";
@@ -271,6 +273,4 @@ if (typeof cv !== 'undefined') {
     window.gestureRecognizer = gestureRecognizer;
     window.runningMode = runningMode;
 </script>
-
-
 </body>

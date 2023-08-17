@@ -6,7 +6,6 @@
 
     <title>Exporting all Global Python Objects</title>
 
-    <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
 
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
@@ -30,6 +29,10 @@
             def __init__(self, radius):
                 self.radius = radius
 
+            def scale(self,a):
+                self.radius *= a
+                return self.radius
+
             @property
             def area(self):
                 a = symbols['pi'] * self.radius**2
@@ -49,8 +52,10 @@
             const exp = pyodideGlobals.get('rough_exponential');
             console.log(`e squared is about ${exp(2)}`);
             const c = pyodideGlobals.get('Circle')(4);
+            console.log(`The new radius of c is ${c.scale(2)}`);
             console.log(`The area of c is ${c.area}`);
         });
     </script>
+    <py-script src="./static/main.py"></py-script>  
   </body>
 </html>

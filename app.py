@@ -1,21 +1,7 @@
-from flask import Flask,render_template,request,jsonify
-from wtforms import Form, StringField
-
-import cv2
-import numpy as np
-import os,time
+from flask import Flask,render_template
 
 
-
-def data_uri_to_cv2_img(data_uri):
-    nparr = np.fromstring(data_uri.decode('base64'), np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    return img
-
-
-# board = charuco_board.TheBoard();
 app = Flask(__name__, static_folder="static", template_folder='templates')
-
 
 
 @app.route("/")
