@@ -22,15 +22,33 @@ video {
 <p class="err" id="vdErr"></p>
 </div>
 <div id="contentarea">
-    <button id="startup" disabled="true" onclick="startup()">start</button><br>
+    <button id="startup" disabled="true" onclick="startup()">start</button>
+    <button id="stop"  onclick="stopCamera()">stop</button><br>
     <video id="video" style="display:none;" > </video>
     <canvas id="canvasOutput"></canvas>
+    <canvas id="map_canvas"></canvas>
 </div>
-
-<script async src="https://huiyingshen.github.io/flask_opencv_js/static/opencv.js" id="opencvjs"  crossorigin="anonymous"></script>
-
+<script
+async src="{{ url_for('static', filename='opencv.js') }}" id="opencvjs">
+// async src="https://huiyingshen.github.io/flask_opencv_js/static/opencv.js" id="opencvjs"  crossorigin="anonymous">
+</script>
 
 <script >
+
+const map_canvas = document.getElementById('map_canvas');
+const map_ctx = map_canvas.getContext('2d');
+const map_img = new Image();
+
+map_img.src = 'https://huiyingshen.github.io/flask_opencv_js/market_tmap.png';
+map_img.crossOrigin = "Anonymous";
+
+map_img.onload = function() {
+    map_canvas.width = map_img.width;
+    map_canvas.height = map_img.height;
+    map_ctx.drawImage(map_img, 0, 0, map_canvas.width, map_canvas.height); // Drawing the image on the canvas at position (0,0) and scaling it to fill the canvas
+};
+
+
 let width = 640;
 let height = 480;
 
@@ -110,38 +128,26 @@ let markerCorners = null;
 let RgbImage = null;
 
 function get_aruco(){
-    inputImage = new cv.Mat(height, width, cv.CV_8UC4);
-    markerImage = new cv.Mat();
-    dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
 
-    markerIds = new cv.Mat();
-    markerCorners  = new cv.MatVector();
-    RgbImage = new cv.Mat();
-    cap = new cv.VideoCapture("video");
-    loopIndex = setInterval(
-        // function(){
-        //     cap.read(inputImage);
-        //     cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
-        //     cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
-        //     if (markerIds.rows > 0) {
-        //         cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
-        //     }
-        //     cv.imshow("canvasOutput", RgbImage);
-        // }
-        one_time_step
-        , 100);
+    loopIndex = setInterval(one_time_step,100);
 }
 
-function one_time_step(){
 
+
+function one_time_step(){
     cap.read(inputImage);
-    cv.cvtColor(inputImage, RgbImage, cv.COLOR_RGBA2RGB, 0);
+    detect_show_aruco(inputImage,"canvasOutput")
+    predictWebcam();
+}
+
+function detect_show_aruco(img,canvas_name){
+    if (img === null) return;
+    cv.cvtColor(img, RgbImage, cv.COLOR_RGBA2RGB, 0);
     cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
     if (markerIds.rows > 0) {
         cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
     }
-    cv.imshow("canvasOutput", RgbImage);
-    predictWebcam();
+    cv.imshow(canvas_name, RgbImage);
 }
 
 function initVideo(ev){
@@ -170,6 +176,42 @@ function startup() {
 
     video.addEventListener("canplay", initVideo, false);
 }
+function stopCamera() {
+    clearInterval(loopIndex);
+    if (inputImage != null && !inputImage.isDeleted()) {
+        inputImage.delete();
+        inputImage = null;
+    }
+    if (markerImage != null && !markerImage.isDeleted()) {
+        markerImage.delete();
+        markerImage = null;
+    }
+    if (dictionary != null && !dictionary.isDeleted()) {
+        dictionary.delete();
+        dictionary = null;
+    }
+    
+    if (markerIds != null && !markerIds.isDeleted()) {
+        markerIds.delete();
+        markerIds = null;
+    }
+    if (markerCorners != null && !markerCorners.isDeleted()) {
+        markerCorners.delete();
+        markerCorners = null;
+    }
+    
+    if (RgbImage != null && !RgbImage.isDeleted()) {
+        RgbImage.delete();
+        RgbImage = null;
+    }
+    
+    document.getElementById("canvasOutput").getContext("2d").clearRect(0, 0, width, height);
+    video.pause();
+    video.srcObject = null;
+    stream.getVideoTracks()[0].stop();
+    start.disabled = false;
+    video.removeEventListener("canplay", initVideo);
+}
 
 function playVideo() {
     if (!streaming) {
@@ -177,6 +219,21 @@ function playVideo() {
         return;
     }
     try {
+
+        markerImage = new cv.Mat();
+        dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
+
+        markerIds = new cv.Mat();
+        markerCorners  = new cv.MatVector();
+        RgbImage = new cv.Mat();
+        cap = new cv.VideoCapture("video");
+
+        let img = cv.imread("map_canvas");
+        detect_show_aruco(img,"map_canvas")
+        img.delete();
+
+        inputImage = new cv.Mat(height, width, cv.CV_8UC4);
+
         get_aruco();
         document.getElementById("vdErr").innerHTML = " ";
     } catch(err) {
@@ -187,6 +244,8 @@ function playVideo() {
 
 function onReady() {
     document.getElementById("startup").disabled = false;
+    console.log("opencvjs is loaded!");
+
 }
 if (typeof cv !== 'undefined') {
     onReady();
