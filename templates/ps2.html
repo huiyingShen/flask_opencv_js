@@ -11,11 +11,46 @@
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
   </head>
 
-  <body>
-    <input type="button" value="Log Python Variables" id="do-math">
+<body>
+<canvas id="map_canvas"></canvas>
+<script>
+    dataURL = "map_canvas.toDataURL()"; 
+    const map_canvas = document.getElementById('map_canvas');
+    const map_ctx = map_canvas.getContext('2d');
+    const map_img = new Image();
+    map_img.src = 'https://huiyingshen.github.io/flask_opencv_js/market_tmap.png';
+    map_img.crossOrigin = "Anonymous";
+    map_img.onload = function() {
+    map_canvas.width = map_img.width;
+    map_canvas.height = map_img.height;
+    map_ctx.drawImage(map_img, 0, 0, map_canvas.width, map_canvas.height); // Drawing the image on the canvas at position (0,0) and scaling it to fill the canvas
+    dataURL = map_canvas.toDataURL().substring(21); 
+    };
+    
+</script>
+<py-config type="json">
+    {
+        "packages": ["numpy", "matplotlib","opencv-python"]
+    }
+</py-config>
+ <py-script src="./static/homography.py"></py-script>  
+<input type="button" value="Log Python Variables" id="do-math">
     <py-script>
+        import cv2
+        from cv2 import aruco
+        import numpy as np
+        import base64
         from js import createObject
         from pyodide.ffi import create_proxy
+
+        def data_uri_to_cv2_img(data_uri):
+            data_uri += "=" * ((4 - len(data_uri) % 4) % 4) # Base64 needs a string with length multiple of 4. If the string is short, it is padded with 1 to 3 =.
+            print("data_uri[:100] = ",data_uri[:100])
+            nparr = np.frombuffer(base64.b64decode(data_uri), np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            print(img.shape)
+            return img
+
 
         createObject(create_proxy(globals()), "pyodideGlobals")
 
@@ -28,6 +63,9 @@
         class Circle():
             def __init__(self, radius):
                 self.radius = radius
+                from js import dataURL
+                im = data_uri_to_cv2_img(dataURL)
+                print("len(dataURL) = ", len(dataURL))
 
             def scale(self,a):
                 self.radius *= a
@@ -56,6 +94,6 @@
             console.log(`The area of c is ${c.area}`);
         });
     </script>
-    <py-script src="./static/main.py"></py-script>  
+
   </body>
 </html>

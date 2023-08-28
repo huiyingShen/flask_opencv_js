@@ -5,17 +5,33 @@
     </head>
 
   <body>
+  <canvas id="map_canvas"></canvas>
   <script>
     name = "Guido" //A JS variable
+    dataURL = "map_canvas.toDataURL()";
 
     // Define a JS Function
     function addTwoNumbers(x, y){
         return x + y;
     }
+
+    const map_canvas = document.getElementById('map_canvas');
+    const map_ctx = map_canvas.getContext('2d');
+    const map_img = new Image();
+    map_img.src = 'https://huiyingshen.github.io/flask_opencv_js/market_tmap.png';
+    map_img.crossOrigin = "Anonymous";
+    map_img.onload = function() {
+    map_canvas.width = map_img.width;
+    map_canvas.height = map_img.height;
+    map_ctx.drawImage(map_img, 0, 0, map_canvas.width, map_canvas.height); // Drawing the image on the canvas at position (0,0) and scaling it to fill the canvas
+    dataURL = map_canvas.toDataURL();
+    };
+
+    
 </script>
 <py-script>
     # Import and use JS function and variable into Python
-    from js import name, addTwoNumbers
+    from js import name,dataURL, addTwoNumbers
 
     print(f"Hello {name}")
     print("Adding 1 and 2 in Javascript: " + str(addTwoNumbers(1, 2)))
@@ -24,12 +40,15 @@
     <div id="plot"></div>
     <py-config type="json">
         {
-          "packages": ["numpy", "matplotlib"]
+          "packages": ["numpy", "matplotlib", "opencv-python"]
         }
     </py-config>
     <py-script>
 import numpy as np
+from js import name,dataURL, addTwoNumbers
 
+print(f"Hello again,  {name}")
+print("dataURL[:10]",dataURL[:10])
 
 def compute_homography(src_points, dst_points):
     # Check that there are at least 4 corresponding points
