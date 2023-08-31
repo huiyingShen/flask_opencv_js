@@ -9,11 +9,19 @@
     <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
 
     <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+
+    <py-env>
+    paths
+        ./static/hello.py
+        ./static/circle.py
+    </py-env>
+    <py-script src="./static/hello.py"></py-script>
+    <py-script src="./static/circle.py"></py-script>
   </head>
 
 <body>
-<canvas id="map_canvas"></canvas><br>
-<canvas id="test_canvas"></canvas>
+<canvas id="map_canvas"></canvas>
+<canvas id="test_canvas",style="display:none;"></canvas>
 <script>
     dataURL = "map_canvas.toDataURL()"; 
     const map_canvas = document.getElementById('map_canvas');
@@ -56,14 +64,15 @@ import base64
 from js import createObject,dataURL,testDataURL
 from pyodide.ffi import create_proxy
 
+
 createObject(create_proxy(globals()), "pyodideGlobals")
 
 def data_uri_to_cv2_img(data_uri):
     data_uri += "=" * ((4 - len(data_uri) % 4) % 4) # Base64 needs a string with length multiple of 4. If the string is short, it is padded with 1 to 3 =.
-    print("data_uri[:100] = ",data_uri[:100])
+    # print("data_uri[:100] = ",data_uri[:100])
     nparr = np.frombuffer(base64.b64decode(data_uri), np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    print(img.shape)
+    # print(img.shape)
     return img
 
 class Homography:
@@ -120,7 +129,7 @@ class HomographyCv(Homography):
         super().__init__()
         self.im0 = None
         self.im = None
-        print(dir(aruco))
+        #print(dir(aruco))
         self.detector = aruco.ArucoDetector(aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250))
 
     def loadMapImage(self,im0):
@@ -185,6 +194,11 @@ def tryGetHomographyDataUri():
             const f1 =  pyodideGlobals.get('tryGetHomographyDataUri');
             f0();
             f1();
+                
+            const c = pyodideGlobals.get('Circle')(4);
+            console.log(`The new radius of c is ${c.scale(2)}`);
+            console.log(`The area of c is ${c.area}`);
+
         });
 
     </script>

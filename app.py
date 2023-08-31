@@ -6,7 +6,7 @@ app = Flask(__name__, static_folder="static", template_folder='templates')
 
 @app.route("/")
 def camio():
-    return render_template('camio.html')
+    return render_template('index.html')
 
 @app.route("/ps1")
 def ps1():
