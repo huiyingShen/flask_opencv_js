@@ -16,6 +16,9 @@ def ps1():
 def ps2():
     return render_template('ps2.html')
 
+@app.route("/ps3")
+def ps3():
+    return render_template('ps3.html')
 @app.route("/click")
 def click():
     return render_template('click.html')

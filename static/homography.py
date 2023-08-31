@@ -1,6 +1,9 @@
 import numpy as np
-
 class Homography:
+    def __init__(self):
+        self.ids = []
+        self.corners = []
+        
     def findId(self,id):
         for i in range(len(self.ids)):
             if id[0] == self.ids[i][0]:
