@@ -48,6 +48,8 @@
     test_ctx.drawImage(test_img, 0, 0, test_canvas.width, test_canvas.height); // Drawing the image on the canvas at position (0,0) and scaling it to fill the canvas
     testDataURL = test_canvas.toDataURL().substring(21); 
     };
+
+    name = "Huiying Shen"
 </script>
 <py-config type="json">
     {
@@ -72,7 +74,7 @@ def data_uri_to_cv2_img(data_uri):
     # print("data_uri[:100] = ",data_uri[:100])
     nparr = np.frombuffer(base64.b64decode(data_uri), np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    # print(img.shape)
+    print(img.shape)
     return img
 
 class Homography:
@@ -198,7 +200,9 @@ def tryGetHomographyDataUri():
             const c = pyodideGlobals.get('Circle')(4);
             console.log(`The new radius of c is ${c.scale(2)}`);
             console.log(`The area of c is ${c.area}`);
-
+            console.log(`name is ${window.name}`);
+            const f3 =  pyodideGlobals.get('data_uri_to_cv2_img');
+            f3(window.dataURL);
         });
 
     </script>
