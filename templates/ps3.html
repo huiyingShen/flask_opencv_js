@@ -20,8 +20,9 @@
   </head>
 
 <body>
-<canvas id="map_canvas"></canvas>
-<canvas id="test_canvas",style="display:none;"></canvas>
+<canvas id="map_canvas" ></canvas>
+<canvas id="test_canvas" style="display:none;"></canvas>
+<div id="mpl"></div>
 <script>
     dataURL = "map_canvas.toDataURL()"; 
     const map_canvas = document.getElementById('map_canvas');
@@ -37,8 +38,8 @@
     };
     
     testDataURL = "map_canvas.toDataURL()"; 
-    const test_canvas = document.getElementById('map_canvas');
-    const test_ctx = map_canvas.getContext('2d');
+    const test_canvas = document.getElementById('test_canvas');
+    const test_ctx = test_canvas.getContext('2d');
     const test_img = new Image();
     test_img.src = 'https://huiyingshen.github.io/flask_opencv_js/marker_test.jpg';
     test_img.crossOrigin = "Anonymous";
@@ -63,6 +64,7 @@ import cv2
 from cv2 import aruco
 import numpy as np
 import base64
+import matplotlib.pyplot as plt
 from js import createObject,dataURL,testDataURL
 from pyodide.ffi import create_proxy
 
@@ -140,7 +142,8 @@ class HomographyCv(Homography):
 
 
     def loadMapDataUri(self):
-        self.loadMapImage(data_uri_to_cv2_img(dataURL))
+        im0 = data_uri_to_cv2_img(dataURL)
+        self.loadMapImage(im0)
 
 
     def tryGetHomography(self,im):
@@ -174,7 +177,14 @@ class HomographyCv(Homography):
         self.h, status = cv2.findHomography(np.array(vCn1),np.array(vCn2))
 
 hm = HomographyCv()
-def loadMapDataUri():hm.loadMapImage(data_uri_to_cv2_img(dataURL))
+def loadMapDataUri():
+    im0 = data_uri_to_cv2_img(dataURL)
+    imgplot = plt.imshow(im0)
+    fig1, ax1 = plt.subplots()
+    ax1.axis('off')
+    ax1.imshow(im0)
+    display(fig1, target="mpl")
+    hm.loadMapImage(im0)
 
 def tryGetHomographyDataUri(): 
     hasH = hm.tryGetHomography(data_uri_to_cv2_img(testDataURL))

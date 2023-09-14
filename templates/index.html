@@ -11,7 +11,12 @@ video {
 .err {
     color: red;
 }
+
 </style>
+
+<link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+<script defer src="https://pyscript.net/latest/pyscript.js"></script>
+
 </head>
 <body>
 <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
@@ -22,31 +27,52 @@ video {
 <p class="err" id="vdErr"></p>
 </div>
 <div id="contentarea">
-    <button id="startup" disabled="true" onclick="startup()">start</button>
+    <button id="startup"  onclick="startup()">start</button>
     <button id="stop"  onclick="stopCamera()">stop</button><br>
-    <video id="video" style="display:none;" > </video>
+    <video id="video"  > </video>
     <canvas id="canvasOutput"></canvas>
     <canvas id="map_canvas"></canvas>
 </div>
-<script
-async src="{{ url_for('static', filename='opencv.js') }}" id="opencvjs">
-// async src="https://huiyingshen.github.io/flask_opencv_js/static/opencv.js" id="opencvjs"  crossorigin="anonymous">
-</script>
+
+<py-config type="json">
+    {
+        "packages": ["numpy", "matplotlib","opencv-python"]
+    }
+</py-config>
+ <py-script src="./static/homography.py"></py-script>  
+
+<py-script>
+import cv2
+from cv2 import aruco
+import numpy as np
+import base64
+from js import createObject
+from pyodide.ffi import create_proxy
+createObject(create_proxy(globals()), "pyodideGlobals")
+</py-script>
 
 <script >
+function createObject(object, variableName){
+    //Bind a variable whose name is the string variableName
+    // to the object called 'object'
+    let execString = variableName + " = object"
+    console.log("Running '" + execString + "'");
+    eval(execString)
+}
 
+dataURL = "map_canvas.toDataURL()"; 
 const map_canvas = document.getElementById('map_canvas');
 const map_ctx = map_canvas.getContext('2d');
 const map_img = new Image();
-
 map_img.src = 'https://huiyingshen.github.io/flask_opencv_js/market_tmap.png';
 map_img.crossOrigin = "Anonymous";
-
 map_img.onload = function() {
     map_canvas.width = map_img.width;
     map_canvas.height = map_img.height;
     map_ctx.drawImage(map_img, 0, 0, map_canvas.width, map_canvas.height); // Drawing the image on the canvas at position (0,0) and scaling it to fill the canvas
+    dataURL = map_canvas.toDataURL().substring(21); 
 };
+
 
 
 let width = 640;
@@ -82,8 +108,8 @@ async function predictWebcam() {
         lastVideoTime = video1.currentTime;
         results = gestureRecognizer.recognizeForVideo(video1, nowInMs);
     }
-    canvasCtx.save();
-    // canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    // canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     canvasElement.style.height = videoHeight;
     webcamElement.style.height = videoHeight;
     canvasElement.style.width = videoWidth;
@@ -92,17 +118,21 @@ async function predictWebcam() {
         for (const landmarks of results.landmarks) {
             drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
                 color: "#00FF00",
-                lineWidth: 3
+                lineWidth: 1
             });
-            drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 1 });
+            // drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 1 });
             canvasCtx.beginPath();
-            x = landmarks[8]["x"]*width;
-            y = landmarks[8]["y"]*height;
-            canvasCtx.ellipse(x, y, 10, 10, Math.PI / 4, 0, 2 * Math.PI);
+            let x = landmarks[8]["x"]*width;
+            let y = landmarks[8]["y"]*height;
+            console.log("tip: x,y = ", x,y);
+            canvasCtx.ellipse(x, y, 5, 5, 0, 0, 2 * Math.PI);
             canvasCtx.stroke();
         }
     }
     // canvasCtx.restore();
+    if (webcamRunning === true) {
+        window.requestAnimationFrame(predictWebcam);
+    }
 }
 
 // In this case, We set width 320, and the height will be computed based on the input stream.
@@ -116,53 +146,9 @@ let video = null;
 let start = null;
 let stream = null;
 
-let loopIndex = 0;
-
-let cap = null;
-let inputImage = null;
-let markerImage = null;
-let dictionary = null;
-let parameter = null;
-let markerIds = null;
-let markerCorners = null;
-let RgbImage = null;
-
-function get_aruco(){
-    markerImage = new cv.Mat();
-    dictionary = new cv.aruco_Dictionary(cv.DICT_4X4_250);
-
-    markerIds = new cv.Mat();
-    markerCorners  = new cv.MatVector();
-    RgbImage = new cv.Mat();
-    cap = new cv.VideoCapture("video");
-
-    let img = cv.imread("map_canvas");
-    detect_show_aruco(img,"map_canvas")
-    map_ctx.save();
-    img.delete();
-
-    inputImage = new cv.Mat(height, width, cv.CV_8UC4);
-
-    loopIndex = setInterval(one_time_step,100);
-}
 
 
 
-function one_time_step(){
-    cap.read(inputImage);
-    detect_show_aruco(inputImage,"canvasOutput")
-    predictWebcam();
-}
-
-function detect_show_aruco(img,canvas_name){
-    if (img === null) return;
-    cv.cvtColor(img, RgbImage, cv.COLOR_RGBA2RGB, 0);
-    cv.detectMarkers(RgbImage, dictionary, markerCorners, markerIds);
-    if (markerIds.rows > 0) {
-        cv.drawDetectedMarkers(RgbImage, markerCorners, markerIds);
-    }
-    cv.imshow(canvas_name, RgbImage);
-}
 
 function initVideo(ev){
     if (!streaming) {
@@ -178,7 +164,14 @@ function startup() {
     video = document.getElementById("video");
     start = document.getElementById("startup");
 
-    navigator.mediaDevices.getUserMedia({ video: {facingMode: "environment"}, audio: false })
+    navigator.mediaDevices.getUserMedia({ 
+            video: {
+                facingMode: "environment",
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: {min: 480, ideal: 720, max: 1080 }
+            }, 
+            audio: false 
+        })
         .then(function(s) {
             stream = s;
             video.srcObject = stream;
@@ -191,33 +184,6 @@ function startup() {
     video.addEventListener("canplay", initVideo, false);
 }
 function stopCamera() {
-    clearInterval(loopIndex);
-    if (inputImage != null && !inputImage.isDeleted()) {
-        inputImage.delete();
-        inputImage = null;
-    }
-    if (markerImage != null && !markerImage.isDeleted()) {
-        markerImage.delete();
-        markerImage = null;
-    }
-    if (dictionary != null && !dictionary.isDeleted()) {
-        dictionary.delete();
-        dictionary = null;
-    }
-    
-    if (markerIds != null && !markerIds.isDeleted()) {
-        markerIds.delete();
-        markerIds = null;
-    }
-    if (markerCorners != null && !markerCorners.isDeleted()) {
-        markerCorners.delete();
-        markerCorners = null;
-    }
-    
-    if (RgbImage != null && !RgbImage.isDeleted()) {
-        RgbImage.delete();
-        RgbImage = null;
-    }
     
     document.getElementById("canvasOutput").getContext("2d").clearRect(0, 0, width, height);
     video.pause();
@@ -232,11 +198,11 @@ function playVideo() {
         console.warn("Please startup your webcam");
         return;
     }
+    webcamRunning = true;
     try {
 
+    predictWebcam() 
 
-
-        get_aruco();
         document.getElementById("vdErr").innerHTML = " ";
     } catch(err) {
         document.getElementById("vdErr").innerHTML = err;
@@ -244,16 +210,8 @@ function playVideo() {
     start.disabled = true;
 }
 
-function onReady() {
-    document.getElementById("startup").disabled = false;
-    console.log("opencvjs is loaded!");
 
-}
-if (typeof cv !== 'undefined') {
-    onReady();
-} else {
-    document.getElementById("opencvjs").onload = onReady;
-}
+
 </script>
 
 <script id="rendered-js" type="module">
