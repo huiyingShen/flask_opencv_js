@@ -30,16 +30,40 @@ video {
     <button id="startup"  onclick="startup()">start</button>
     <button id="stop"  onclick="stopCamera()">stop</button><br>
     <video id="video"  > </video>
-    <canvas id="canvasOutput"></canvas>
-    <canvas id="map_canvas"></canvas>
+    <canvas id="canvasOutput" style="display:none;"></canvas>
+    <canvas id="map_canvas" style="display:none;"></canvas>
 </div>
+<div id="map2">
+    <div>
+        <canvas></canvas>
+    </div>
+</div>
+<div id="live">
+    <div>
+        <canvas></canvas>
+    </div>
+</div>
+<script>
+    dataURL = "map_canvas.toDataURL()"; 
+    const map_canvas = document.getElementById('map_canvas');
+    const map_ctx = map_canvas.getContext('2d');
+    const map_img = new Image();
+    map_img.src = 'https://huiyingshen.github.io/flask_opencv_js/market_tmap.png';
+    map_img.crossOrigin = "Anonymous";
+    map_img.onload = function() {
+        map_canvas.width = map_img.width;
+        map_canvas.height = map_img.height;
+        map_ctx.drawImage(map_img, 0, 0, map_canvas.width, map_canvas.height); // Drawing the image on the canvas at position (0,0) and scaling it to fill the canvas
+        dataURL = map_canvas.toDataURL().substring(21); 
+    };
 
+    liveDataURL = "live data"
+</script>
 <py-config type="json">
     {
         "packages": ["numpy", "matplotlib","opencv-python"]
     }
 </py-config>
- <py-script src="./static/homography.py"></py-script>  
 
 <py-script>
 import cv2
@@ -47,8 +71,176 @@ from cv2 import aruco
 import numpy as np
 import base64
 from js import createObject
-from pyodide.ffi import create_proxy
+from js import (
+    console,
+    document,
+    devicePixelRatio,
+    ImageData,
+    Uint8ClampedArray,
+    CanvasRenderingContext2D as Context2d,
+    requestAnimationFrame,
+)
+from pyodide.ffi import to_js, create_proxy
+
+def prepare_canvas(width: int, height: int, canvas: Element) -&gt; Context2d:
+                    ctx = canvas.getContext("2d")
+                    canvas.style.width = f"{width}px"
+                    canvas.style.height = f"{height}px"
+                    canvas.width = width
+                    canvas.height = height
+                    ctx.clearRect(0, 0, width, height)
+                    return ctx
+def draw_image(ctx: Context2d, image: np.array) -&gt; None:
+                width, height, ch = image.shape
+                if ch == 3: image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+                data = Uint8ClampedArray.new(to_js(image.tobytes()))
+                image_data = ImageData.new(data, height, width)
+                ctx.putImageData(image_data, 0, 0)
+
 createObject(create_proxy(globals()), "pyodideGlobals")
+def data_uri_to_cv2_img(data_uri):
+    data_uri += "=" * ((4 - len(data_uri) % 4) % 4) # Base64 needs a string with length multiple of 4. If the string is short, it is padded with 1 to 3 =.
+    # print("data_uri[:100] = ",data_uri[:100])
+    nparr = np.frombuffer(base64.b64decode(data_uri), np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    #print(img.shape)
+    return img
+
+class Homography:
+    def __init__(self):
+        self.ids = []
+        self.corners = []
+        
+    def findId(self,id):
+        for i in range(len(self.ids)):
+            if id[0] == self.ids[i][0]:
+                return i
+        return -1
+    
+    def getCornerPairs(self,corners, ids):
+        if ids is None: return
+        vCn1,vCn2 = [],[]
+        for i,id in enumerate(ids):
+            indx = self.findId(id)
+            if indx != -1:
+                vCn1.extend(corners[i][0])
+                vCn2.extend(self.corners[indx][0])
+        return vCn1,vCn2
+        
+    def getHomography(self,vCn1,vCn2):
+        assert len(vCn1) == len(vCn2) and len(vCn1) >= 4
+        A = []
+        for i in range(len(vCn1)):
+            x, y = vCn1[i]
+            u, v = vCn2[i]
+            A.extend([
+                [-x, -y, -1, 0, 0, 0, u*x, u*y, u],
+                [0, 0, 0, -x, -y, -1, v*x, v*y, v]
+            ])
+        A = np.array(A)
+        
+        _, _, V = np.linalg.svd(A)
+        self.h = V[-1].reshape(3, 3)
+        # print("getHomography(): \n",self.h)
+
+    def verify(self,vCn1,vCn2):
+         for i in range(len(vCn1)):
+            x, y = vCn1[i]
+            u1,v1 = self.warp_func(x,y)
+            u, v = vCn2[i]
+            print(f'{u:5.1f} {v:5.1f} {u1:5.1f} {v1:5.1f} ') 
+
+    def warp_func(self,x,y):
+        xy_homogeneous = np.array([x, y, 1])
+        uvw = np.dot(self.h, xy_homogeneous)
+        return [uvw[0] / uvw[2], uvw[1] / uvw[2]]
+
+class HomographyCv(Homography):
+    def __init__(self):
+        super().__init__()
+        self.im0 = None
+        self.im = None
+        #print(dir(aruco))
+        self.detector = aruco.ArucoDetector(aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_250))
+
+    def loadMapImage(self,im0):
+        self.im0 = im0
+        self.corners, self.ids, _ = self.detector.detectMarkers(self.im0)
+        cns = []
+        for cn in self.corners:
+            cns.extend(cn[0])
+        self.drawMarker(im0,cns)
+
+    def loadMapDataUri(self):
+        im0 = data_uri_to_cv2_img(dataURL)
+        self.loadMapImage(im0)
+
+
+    def tryGetHomography(self,im):
+        self.im = im
+        corners, ids, _ = self.detector.detectMarkers(self.im)
+        if ids is None or len(ids) < 3: return False
+        vCn1,vCn2 = self.getCornerPairs(corners,ids)
+        self.drawMarker(self.im,vCn1)
+        if len(vCn1) < 12: return False
+        self.getHomography(vCn1,vCn2)
+        return True
+    
+    def tryGetHomographyDataUri(self):
+        return self.tryGetHomography(data_uri_to_cv2_img(testDataURL))
+
+    def drawMarker(self,bgr,corners):
+        assert len(corners)%4 == 0
+        nMarker = int(len(corners)/4)
+        for n in range(nMarker):
+            for i in range(4):
+                i1 = (i+3)%4
+                x0,y0 = corners[n*4 + i1]
+                x1,y1 = corners[n*4 + i]
+                cv2.line(bgr, (int(x0),int(y0)), (int(x1),int(y1)), (0, 255, 0), 2)
+
+    def drawPt(self,bgr,x,y):
+        cv2.circle(bgr, (x, y), 4, (0, 0, 255), -1)
+    
+    def getHomographyCv(self,vCn1,vCn2):
+        self.h, status = cv2.findHomography(np.array(vCn1),np.array(vCn2))
+
+hm = HomographyCv()
+
+def loadMapDataUri(dataURL):
+    hm.loadMapImage(data_uri_to_cv2_img(dataURL))
+    width, height, _ = hm.im0.shape
+    canvas = document.querySelector("#map2 canvas")
+
+    width, height = height,width
+    ctx = prepare_canvas(width,height,canvas)
+    draw_image(ctx,hm.im0)
+
+def tryGetHomographyDataUri(testDataURL): 
+    im =  data_uri_to_cv2_img(testDataURL)
+    hasH = hm.tryGetHomography(im)
+    if not hasH: return
+    x0,y0 = 200,300
+    xy = hm.warp_func(x0,y0)
+    x,y = int(xy[0]),int(xy[1])
+    cv2.circle(hm.im, (x0, y0), 8, (255, 0, 0), -1)
+
+    im0 = hm.im0.copy()
+    cv2.circle(im0, (x, y), 4, (0, 0, 255), -1)
+
+    width, height, _ = im0.shape
+    canvas = document.querySelector("#map2 canvas")
+    width, height = height,width
+    ctx = prepare_canvas(width,height,canvas)
+    draw_image(ctx,im0)
+    
+    width, height, _ = hm.im.shape
+    canvas = document.querySelector("#live canvas")
+    width, height = height,width
+    ctx = prepare_canvas(width,height,canvas)
+    draw_image(ctx,hm.im)
+
+
 </py-script>
 
 <script >
@@ -60,37 +252,17 @@ function createObject(object, variableName){
     eval(execString)
 }
 
-dataURL = "map_canvas.toDataURL()"; 
-const map_canvas = document.getElementById('map_canvas');
-const map_ctx = map_canvas.getContext('2d');
-const map_img = new Image();
-map_img.src = 'https://huiyingshen.github.io/flask_opencv_js/market_tmap.png';
-map_img.crossOrigin = "Anonymous";
-map_img.onload = function() {
-    map_canvas.width = map_img.width;
-    map_canvas.height = map_img.height;
-    map_ctx.drawImage(map_img, 0, 0, map_canvas.width, map_canvas.height); // Drawing the image on the canvas at position (0,0) and scaling it to fill the canvas
-    dataURL = map_canvas.toDataURL().substring(21); 
-};
-
-
-
-let width = 640;
-let height = 480;
-
 let gestureRecognizer;
 let createGestureRecognizer;
 let runningMode = "IMAGE";
 let enableWebcamButton;
 let webcamRunning = false;
 
-const videoHeight = height.toString() + "px";
-const videoWidth = width.toString() + "px";
 // Before we can use HandLandmarker class we must wait for it to finish
 // loading. Machine Learning models can be large and take a moment to
 // get everything needed to run.
 
-const video1 = document.getElementById("video");
+
 const canvasElement = document.getElementById("canvasOutput");
 const canvasCtx = canvasElement.getContext("2d");
 
@@ -104,16 +276,19 @@ async function predictWebcam() {
         await gestureRecognizer.setOptions({ runningMode: "VIDEO" });
     }
     let nowInMs = Date.now();
-    if (video1.currentTime !== lastVideoTime) {
-        lastVideoTime = video1.currentTime;
-        results = gestureRecognizer.recognizeForVideo(video1, nowInMs);
+    if (webcamElement.currentTime !== lastVideoTime) {
+        lastVideoTime = webcamElement.currentTime;
+        results = gestureRecognizer.recognizeForVideo(webcamElement, nowInMs);
     }
+    canvasElement.width = webcamElement.width;
+    canvasElement.height = webcamElement.height;
+    canvasCtx.drawImage(webcamElement, 0, 0, webcamElement.width, webcamElement.height);
+    liveDataURL = canvasElement.toDataURL().substring(21); 
+    window.f1(liveDataURL);
     // canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    canvasElement.style.height = videoHeight;
-    webcamElement.style.height = videoHeight;
-    canvasElement.style.width = videoWidth;
-    webcamElement.style.width = videoWidth;
+    canvasElement.style.height = webcamElement.style.height = webcamElement.height + 'px';
+    canvasElement.style.width = webcamElement.style.width = webcamElement.width + 'px';
     if (results.landmarks) {
         for (const landmarks of results.landmarks) {
             drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
@@ -122,8 +297,8 @@ async function predictWebcam() {
             });
             // drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 1 });
             canvasCtx.beginPath();
-            let x = landmarks[8]["x"]*width;
-            let y = landmarks[8]["y"]*height;
+            let x = landmarks[8]["x"]*webcamElement.width;
+            let y = landmarks[8]["y"]*webcamElement.height;
             console.log("tip: x,y = ", x,y);
             canvasCtx.ellipse(x, y, 5, 5, 0, 0, 2 * Math.PI);
             canvasCtx.stroke();
@@ -148,11 +323,13 @@ let stream = null;
 
 
 
-
-
 function initVideo(ev){
+    window.f0 =  pyodideGlobals.get('loadMapDataUri');
+    window.f1 =  pyodideGlobals.get('tryGetHomographyDataUri');
+    window.f0(window.dataURL);
     if (!streaming) {
-        height = video.videoHeight / (video.videoWidth/width);
+        height = video.videoHeight;
+        width = video.videoWidth;
         video.setAttribute("width", width);
         video.setAttribute("height", height);
         streaming = true;
@@ -167,8 +344,8 @@ function startup() {
     navigator.mediaDevices.getUserMedia({ 
             video: {
                 facingMode: "environment",
-                width: { min: 640, ideal: 1280, max: 1920 },
-                height: {min: 480, ideal: 720, max: 1080 }
+                width: { min: 640, ideal: 640, max: 1920 },
+                height: {min: 480, ideal: 480, max: 1080 }
             }, 
             audio: false 
         })
@@ -209,8 +386,6 @@ function playVideo() {
     }
     start.disabled = true;
 }
-
-
 
 </script>
 

@@ -20,9 +20,10 @@
   </head>
 
 <body>
-<canvas id="map_canvas" ></canvas>
+<canvas id="map_canvas" style="display:none;"></canvas>
 <canvas id="test_canvas" style="display:none;"></canvas>
 <div id="mpl"></div>
+<div id="live"></div>
 <script>
     dataURL = "map_canvas.toDataURL()"; 
     const map_canvas = document.getElementById('map_canvas');
@@ -64,6 +65,7 @@ import cv2
 from cv2 import aruco
 import numpy as np
 import base64
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from js import createObject,dataURL,testDataURL
 from pyodide.ffi import create_proxy
@@ -139,7 +141,10 @@ class HomographyCv(Homography):
     def loadMapImage(self,im0):
         self.im0 = im0
         self.corners, self.ids, _ = self.detector.detectMarkers(self.im0)
-
+        cns = []
+        for cn in self.corners:
+            cns.extend(cn[0])
+        self.drawMarker(im0,cns)
 
     def loadMapDataUri(self):
         im0 = data_uri_to_cv2_img(dataURL)
@@ -159,7 +164,6 @@ class HomographyCv(Homography):
     def tryGetHomographyDataUri(self):
         return self.tryGetHomography(data_uri_to_cv2_img(testDataURL))
 
-
     def drawMarker(self,bgr,corners):
         assert len(corners)%4 == 0
         nMarker = int(len(corners)/4)
@@ -177,19 +181,42 @@ class HomographyCv(Homography):
         self.h, status = cv2.findHomography(np.array(vCn1),np.array(vCn2))
 
 hm = HomographyCv()
-def loadMapDataUri():
-    im0 = data_uri_to_cv2_img(dataURL)
-    imgplot = plt.imshow(im0)
+
+def my_imshow(im,target):
     fig1, ax1 = plt.subplots()
     ax1.axis('off')
-    ax1.imshow(im0)
-    display(fig1, target="mpl")
-    hm.loadMapImage(im0)
+    ax1.imshow(im)
+    display(fig1, target=target)
+
+def loadMapDataUri():
+    hm.loadMapImage(data_uri_to_cv2_img(dataURL))
+    #my_imshow(hm.im0,'mpl')
 
 def tryGetHomographyDataUri(): 
     hasH = hm.tryGetHomography(data_uri_to_cv2_img(testDataURL))
-    print(hasH)
+    x0,y0 = 400,400
+    xy = hm.warp_func(x0,y0)
+    x,y = int(xy[0]),int(xy[1])
+    cv2.circle(hm.im, (x0, y0), 8, (255, 0, 0), -1)
+    cv2.circle(hm.im0, (x, y), 4, (0, 0, 255), -1)
     print(hm.h)
+    
+    mpl.rcParams[ 'figure.figsize' ] = ( 3,6 )
+    mpl.rcParams[ 'figure.dpi' ] = 200
+    fig = plt.figure()
+
+    # Add the first image
+    ax1 = fig.add_subplot(2, 1, 1)  # 1 row, 3 columns, first plot
+    ax1.imshow(hm.im0)
+    ax1.axis('off')  # Turn off axis numbers and ticks
+
+
+    # Add the second image
+    ax2 = fig.add_subplot(2, 1, 2)  # 1 row, 3 columns, second plot
+    ax2.imshow(hm.im)
+    ax2.axis('off')
+
+    display(fig, target='live')
 
     </py-script>
     <script>
