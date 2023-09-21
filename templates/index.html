@@ -29,7 +29,7 @@ video {
 <div id="contentarea">
     <button id="startup"  onclick="startup()">start</button>
     <button id="stop"  onclick="stopCamera()">stop</button><br>
-    <video id="video"  > </video>
+    <video id="video" style="display:none;" > </video>
     <canvas id="canvasOutput" style="display:none;"></canvas>
     <canvas id="map_canvas" style="display:none;"></canvas>
 </div>
@@ -110,6 +110,7 @@ class Homography:
     def __init__(self):
         self.ids = []
         self.corners = []
+        self.h = None
         
     def findId(self,id):
         for i in range(len(self.ids)):
@@ -219,27 +220,28 @@ def loadMapDataUri(dataURL):
 def tryGetHomographyDataUri(testDataURL): 
     im =  data_uri_to_cv2_img(testDataURL)
     hasH = hm.tryGetHomography(im)
-    if not hasH: return
-    x0,y0 = 200,300
-    xy = hm.warp_func(x0,y0)
-    x,y = int(xy[0]),int(xy[1])
-    cv2.circle(hm.im, (x0, y0), 8, (255, 0, 0), -1)
 
-    im0 = hm.im0.copy()
-    cv2.circle(im0, (x, y), 4, (0, 0, 255), -1)
-
-    width, height, _ = im0.shape
-    canvas = document.querySelector("#map2 canvas")
-    width, height = height,width
-    ctx = prepare_canvas(width,height,canvas)
-    draw_image(ctx,im0)
     
+
+
+def project(x,y):
+    cv2.circle(hm.im, (int(x), int(y)), 8, (255, 0, 0), -1)
     width, height, _ = hm.im.shape
     canvas = document.querySelector("#live canvas")
     width, height = height,width
     ctx = prepare_canvas(width,height,canvas)
     draw_image(ctx,hm.im)
 
+    if hm.h is None: return
+    xy = hm.warp_func(x,y)
+    x,y = int(xy[0]),int(xy[1])
+    im0 = hm.im0.copy()
+    cv2.circle(im0, (x, y), 4, (0, 0, 255), -1)
+    width, height, _ = im0.shape
+    canvas = document.querySelector("#map2 canvas")
+    width, height = height,width
+    ctx = prepare_canvas(width,height,canvas)
+    draw_image(ctx,im0)
 
 </py-script>
 
@@ -299,9 +301,10 @@ async function predictWebcam() {
             canvasCtx.beginPath();
             let x = landmarks[8]["x"]*webcamElement.width;
             let y = landmarks[8]["y"]*webcamElement.height;
-            console.log("tip: x,y = ", x,y);
+            // console.log("tip: x,y = ", x,y);
             canvasCtx.ellipse(x, y, 5, 5, 0, 0, 2 * Math.PI);
             canvasCtx.stroke();
+            window.project(x,y);
         }
     }
     // canvasCtx.restore();
@@ -326,6 +329,7 @@ let stream = null;
 function initVideo(ev){
     window.f0 =  pyodideGlobals.get('loadMapDataUri');
     window.f1 =  pyodideGlobals.get('tryGetHomographyDataUri');
+    window.project =  pyodideGlobals.get('project');
     window.f0(window.dataURL);
     if (!streaming) {
         height = video.videoHeight;
